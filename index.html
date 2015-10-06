@@ -1,0 +1,336 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <div id="main" class="main">
+            <audio autoplay=1 loop=1>
+                <source src="assets/figaro.mp3" type="audio/mpeg">
+            </audio>
+            
+            <div id="boundary" class="boundary" style="top: 0px; left: 0px; width: 490px; height: 390px; border: 1px solid black">
+                <div id="mapbalance" class="mapbalance" style="width: 490px; height: 390px;"></div>
+            </div>
+            
+            <div id="chara" class="chara" style="width: 24px; height: 48px;"></div>
+            
+            <div id="minimap" class="minimap">
+                <div id="charLoc" class="charLoc" style="top: 19px; left: 11px;"></div>
+            </div>
+            
+            <div id="menuContainer" class="menuContainer">
+                <div id="menu" class="menu">
+                    <div id="menubg" class="menubg"></div>
+                    <div id="pauseText" class="pauseText">PAUSED</div>
+                    <div id="charprofile" class="charprofile"></div>
+                    <div id="charname" class="charname">Terra Branford</div>
+                    <div id="nowplaying" class="nowplaying"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="devtools" class="devtools" style="left: 510px; position: relative; top: -490px;">
+                <div id="fpsctr" class="fpsctr"></div>
+                <input id="chkbox16bit" class="chkbox16bit" type="checkbox" checked="true">16 bit animation</div>
+        </div>
+        
+        <script>
+            Initialize();
+            setInterval(Update, 50);
+            setInterval(setFPSCounter, 1000);
+            
+            var fps = 0;
+            
+            //#Global Variables
+            var x = []; //keys pressed
+            var speed = 10;
+            
+            //Char variables
+            var charTop;
+            var charLeft;
+            var charLocTop;
+            var charLocLeft;
+            
+            //Map variables
+            var mapX = -200;
+            var mapY = -400;
+            var charLocPos = 0;
+            
+            //Menu variables
+            var paused = false;
+            
+            //bool variables
+            var finishAnimation = true;
+            var boolPauseChar = false;
+            
+            var boundTop = parseInt(boundary.style.top.replace("px",""));
+            var boundLeft = parseInt(boundary.style.left.replace("px",""));
+            var boundBot = parseInt(boundary.style.top.replace("px","")) 
+                + parseInt(boundary.style.height.replace("px","")) 
+                - parseInt(chara.style.height.replace("px",""));
+            var boundRight = parseInt(boundary.style.left.replace("px","")) 
+                + parseInt(boundary.style.width.replace("px",""))
+                - parseInt(chara.style.width.replace("px",""));
+            
+            function setFPSCounter(){
+                fpsctr.innerHTML = "FPS:" + fps;
+                fps = 0;
+            }
+            
+            function Initialize(){
+                var images = new Array(
+                    "assets/terrasprite.png",
+                    "assets/mapbalance.png",
+                    "assets/terraprofile.png"
+                );
+
+                var loadedImage = 0;
+                for (var i = 0; i <= images.length - 1; i++) {
+                    imageObj = new Image();
+                    imageObj.src = images[i];
+                    imageObj.addEventListener("load", iLoad, false)
+                }
+
+                function iLoad() {
+                    loadedImage++;
+
+                    if (images.length == loadedImage) {
+                        chara.style.background = "url('" + images[0] + "') -48px 0px";
+                        chara.style.top = 100;
+                        chara.style.left = 150;
+                        chara.classList.add("animationDown");
+                        
+                        mapbalance.style.background = "url('" + images[1] + "')";
+                        mapbalance.style.backgroundPosition = mapX + " " + mapY;
+                        
+                        charprofile.style.background = "url('" + images[2] + "') -120px -30px";
+                        
+                        minimap.style.background = "url('" + images[1] + "')";
+                        minimap.style.backgroundSize = "contain";
+                    }
+                }
+                
+                nowplaying.innerHTML = "FF6 - Figaro Theme";
+            }
+            
+            function Update(){
+                onkeydown = onkeyup = function(e){
+                     x[String.fromCharCode(e.keyCode)] = e.type == 'keydown';
+                }
+                 
+                //Game functions
+                if(!paused){
+                    setCharPosition();
+                    setCharKeyPressed();
+                    setCharLocPos();
+                }else{
+                    setCharaPaused();
+                }
+                
+                //System functions
+                otherKeyboardFunctions();
+                menuOptions();
+                
+                //DevConsole functions: Comment for better performance
+                fps++;
+                consoleLogCheck();
+                console16BitMode();
+                //End of DevConsole
+            }
+            
+            function otherKeyboardFunctions(){
+                if(finishAnimation){
+                    if(x["P"]){
+                        paused = !paused;
+                        finishAnimation = false;
+                        setTimeout(function(){finishAnimation = true;},800);
+                    }
+                }
+            }
+            
+            function menuOptions(){
+                menuMainShow();
+            }
+            
+            function menuMainShow(){                
+                if(paused){
+                    if(!menu.classList.contains("menuShow"))
+                        menu.classList.add("menuShow");
+                }else{
+                    if(menu.classList.contains("menuShow"))
+                        menu.classList.remove("menuShow");
+                }
+            }
+            
+            function setCharPosition(){
+                charTop = parseInt(chara.style.top.replace("px",""));
+                charLeft = parseInt(chara.style.left.replace("px",""));
+                charLocTop = parseInt(charLoc.style.top.replace("px",""));
+                charLocLeft = parseInt(charLoc.style.left.replace("px",""));
+            }
+            
+            
+            function setCharKeyPressed(){
+                if(boolPauseChar){
+                    boolPauseChar = false;
+                    chara.classList.add("animationDown");
+                }
+                
+                if(!(x["S"] && x["W"])){
+                    if(x["S"]){
+                        charTop += speed;
+
+                        if(boundBoxCollision(charTop, charLeft)){
+                            chara.style.top = charTop+"px";
+                        }else{
+                            charTop -= speed;
+                        }
+                        removeOtherWalkAnimation();
+                        if(!chara.classList.contains("animationDown"))
+                                chara.classList.add("animationDown");
+                    }
+                    else if(x["W"]){
+                        charTop -= speed;
+
+                        if(boundBoxCollision(charTop, charLeft)){
+                            chara.style.top = charTop+"px";
+                        }else{
+                            charTop += speed;
+                        }
+                        removeOtherWalkAnimation();
+                        if(!chara.classList.contains("animationUp"))
+                            chara.classList.add("animationUp");
+                    }
+                }
+
+                if(!(x["A"] && x["D"])){
+                    if(x["A"]){
+                        charLeft -= speed;
+
+                        if(boundBoxCollision(charTop, charLeft)){
+                            chara.style.left = charLeft+"px";
+                        }else{
+                            charLeft += speed;
+                        }
+                        removeOtherWalkAnimation();
+                        if(!chara.classList.contains("animationLeftRight"))
+                            chara.classList.add("animationLeftRight");
+                    }
+                    else if(x["D"]){
+                        charLeft += speed;
+
+                        if(boundBoxCollision(charTop, charLeft)){
+                            chara.style.left = charLeft+"px";
+                        }else{
+                            charLeft -= speed;
+                        }
+                        removeOtherWalkAnimation();
+                        if(!chara.classList.contains("animationLeftRight"))
+                            chara.classList.add("animationLeftRight");
+                        if(!chara.classList.contains("reverse"))
+                            chara.classList.add("reverse");
+                    }
+                }
+            }
+            
+            function setCharLocPos(){
+                if(!(x["W"] && x["S"])){
+                    if(x["W"]){
+                        if(charLocPos <= -7){
+                            charLocTop--;
+                            charLoc.style.top = charLocTop+"px";
+                            charLocPos = 0;
+                        }
+                    }
+                    else if(x["S"]){
+                        
+                    }
+                }
+                if(!(x["A"] && x["D"])){
+                    if(x["A"]){
+                        
+                    }else if(x["D"]){
+                            
+                    }
+                }
+            }
+            
+            function setCharaPaused(){
+                if(!boolPauseChar){
+                    removeOtherWalkAnimation();
+                    boolPauseChar = true;
+                }
+            }
+            
+            function removeOtherWalkAnimation(){
+                if(chara.classList.contains("animationUp"))
+                    chara.classList.remove("animationUp");
+                if(chara.classList.contains("animationDown"))
+                        chara.classList.remove("animationDown");
+                if(chara.classList.contains("animationLeftRight"))
+                        chara.classList.remove("animationLeftRight");
+                if(chara.classList.contains("reverse"))
+                        chara.classList.remove("reverse");
+            }
+            
+            function boundBoxCollision(top, left){
+                if(top-40 < boundTop && x["W"]){
+                    mapY += speed;
+                    mapbalance.style.backgroundPosition = mapX + " " + mapY;
+                    return false;
+                }
+                if(left-50 < boundLeft && x["A"]){
+                    mapX += speed;
+                    mapbalance.style.backgroundPosition = mapX + " " + mapY;
+                    return false;
+                }
+                if(top+40 > boundBot && x["S"]){
+                    mapY -= speed;
+                    mapbalance.style.backgroundPosition = mapX + " " + mapY;
+                    return false;
+                }
+                if(left+50 > boundRight && x["D"]){
+                    mapX -= speed;
+                    mapbalance.style.backgroundPosition = mapX + " " + mapY;
+                    return false;
+                }
+
+                return true;
+            }
+            
+            function console16BitMode(){
+                if(!chkbox16bit.checked){
+                    if(!chara.classList.contains("charaNon16"))
+                        chara.classList.add("charaNon16");
+                    if(!mapbalance.classList.contains("mapbalanceNon16"))
+                        mapbalance.classList.add("mapbalanceNon16");
+                    if(!menu.classList.contains("menuNon16"))
+                        menu.classList.add("menuNon16");
+                    if(!nowplaying.classList.contains("nowplayingNon16"))
+                        nowplaying.classList.add("nowplayingNon16");
+                }else{
+                    if(chara.classList.contains("charaNon16"))
+                        chara.classList.remove("charaNon16");
+                    if(mapbalance.classList.contains("mapbalanceNon16"))
+                        mapbalance.classList.remove("mapbalanceNon16");
+                    if(menu.classList.contains("menuNon16"))
+                        menu.classList.remove("menuNon16");
+                    if(nowplaying.classList.contains("nowplayingNon16"))
+                        nowplaying.classList.remove("nowplayingNon16");
+                }
+            }
+            
+            function consoleLogCheck(){
+                console.log("\n\n\n\n\n");
+                console.log("FPS/Update: " + fps);
+                console.log(x);      
+                console.log("Top Left[" + charTop + " : " + charLeft + "]");
+                console.log("");
+                //console.log("Paused: "+paused);
+                //console.log("Boundary Collider: " + boundBot + " : " + boundRight);
+           }
+        </script>
+    </body>
+</html>
